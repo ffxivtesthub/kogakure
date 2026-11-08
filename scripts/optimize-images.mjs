@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { buildTransparentLogo } from './logo-alpha.mjs'
 import { readdir, mkdir, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 const root=resolve(process.cwd())
@@ -14,10 +15,13 @@ async function exportImage(source,name,opts={}){
  report.push({name,source,originalBytes:before,outputBytes:img.size,width:img.width,height:img.height,reductionPercent:Math.round((1-img.size/before)*100)})
  console.log(name+': '+(before/1024/1024).toFixed(2)+'MB -> '+(img.size/1024).toFixed(0)+'KB ('+report.at(-1).reductionPercent+'%)')
 }
-await exportImage('狐隱LOGO/狐隱金彩櫻花物語.png','logo-wide.webp',{lossless:true})
-await exportImage('狐隱LOGO/狐隱金彩櫻花物語.png','logo-wide-display.webp',{width:1150,lossless:true})
-await exportImage('狐隱LOGO/狐隱之湯：金月白狐徽章.png','logo-mark.webp',{lossless:true})
-await exportImage('狐隱LOGO/狐隱之湯：金月白狐徽章.png','logo-mark-small.webp',{width:140,lossless:true})
+// Transparent logos are always regenerated from the original assets.
+await buildTransparentLogo(root,'狐隱LOGO/狐隱金彩櫻花物語.png',[
+ {path:'logo-wide.webp'}, {path:'logo-wide-display.webp',maxWidth:1150}
+])
+await buildTransparentLogo(root,'狐隱LOGO/狐隱之湯：金月白狐徽章.png',[
+ {path:'logo-mark.webp'}, {path:'logo-mark-small.webp',maxWidth:140}
+])
 await exportImage('員工圖/FBK2.png','staff-01.webp',{width:1900,quality:94})
 await exportImage('員工圖/FBK2.png','staff-01-small.webp',{width:800,quality:90})
 await exportImage('員工圖/99.png','staff-02.webp',{width:1900,quality:94})

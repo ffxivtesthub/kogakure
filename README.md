@@ -9,7 +9,7 @@
 - Supabase Auth：管理者登入
 - Supabase PostgreSQL + RLS：公開員工資料／管理者編修保護
 - Supabase Storage：管理者上傳的照片
-- Sharp：正式素材轉換 WebP，原始 PNG 不修改
+- Sharp：正式素材轉換 WebP，Logo 自動去除外圍背景；原始 PNG 不修改
 
 ## 開發進度
 
@@ -29,7 +29,7 @@
 在 **D:\kogakure** 執行：
 
 1. `npm install`
-2. `npm run assets:build`（根據三個正式素材資料夾輸出圖片，不更動原始圖）
+2. `npm run assets:build`（從三個原始素材資料夾產生壓縮圖，並自動為兩款 Logo 去背，不修改來源）
 3. `npm run dev`
 4. 開啟終端顯示的 Vite 網址，通常是 `http://localhost:5173/#/staff`
 
@@ -69,7 +69,7 @@ insert into public.admin_users(user_id) values ('YOUR_AUTH_USER_UUID');
 ## 速度、圖片品質與設計標準
 
 - 首頁／人物卡使用 WebP，提供縮圖，較大的照片只在展開詳情時下載。
-- Logo 用無損 WebP；員工照以高品質 WebP 輸出 2 種尺寸。來源 PNG 永不覆寫。
+- Logo 透過 `scripts/logo-alpha.mjs` 去除外圍深色背景，保留圓章內部深色設計，裁切透明留白後以無損 WebP 輸出；員工照以高品質 WebP 輸出 2 種尺寸。來源 PNG 永不覆寫。
 - 後台圖片上傳由瀏覽器產生高品質 WebP 與 760px 列表縮圖，存於 Supabase Storage。
 - **高品質有損 WebP 並非逐像素無損**；以實際肉眼觀感優先，如需數學上的無損需另改用 lossless 來源。
 - 桌面基本字體 >= 18px CSS，手機基本字體 17px；高解析度寬視窗再放大。避免深色背景使用灰到看不清的文案。
@@ -90,3 +90,10 @@ insert into public.admin_users(user_id) values ('YOUR_AUTH_USER_UUID');
 | `場景照/*` | `public/images/scene-01.webp` ~ `scene-14.webp` |
 
 員工姓名／簡介均為示範文字，後台正式建立後以資料庫為準。
+
+## 預覽版本與正式移交
+
+- 人員介紹頁已精簡文案；少於五位員工時不顯示搜尋篩選列，社群連結只有填寫後才顯示，名帖不包含預約按鈕。
+- 公開頁尾不顯示管理入口；管理者仍可直接使用 `/#/admin` 登入，資料保護以 Supabase RLS 為準。
+- `.gitignore` 已忽略 `*.tsbuildinfo`。如果歷史提交曾追蹤 `tsconfig.tsbuildinfo`，在 Git Bash 執行一次 `git rm --cached tsconfig.tsbuildinfo` 取消追蹤（不刪本機檔案）。
+- 店長接手及測試帳號轉正式帳號的步驟見 `docs/HANDOFF.md`。

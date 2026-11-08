@@ -5,6 +5,7 @@ dist/
 !.env.example
 .DS_Store
 *.log
+*.tsbuildinfo
 # 正式原始素材不放進公開 Git 倉庫，僅提交壓縮後的 public/images
 /員工圖/
 /場景照/

@@ -17,7 +17,6 @@ export default function StaffDialog({staff,onClose}:{staff:Staff;onClose:()=>voi
    <button className="dialog-close" ref={closeRef} type="button" onClick={onClose} aria-label="關閉介紹"><X size={22}/></button>
    <div className="dialog-photo"><img src={staff.imageUrl||staff.thumbnailUrl} alt={staff.name+'的角色照片'}/><span/></div>
    <div className="dialog-content">
-    <p className="eyebrow">KOGAKURE · 名帖</p>
     <div className="detail-stamp" aria-hidden="true">狐<br/>隱</div>
     <p className="detail-role">{staff.role||'接待者'}</p>
     <h2 id="detail-name">{staff.name}</h2>
@@ -26,11 +25,10 @@ export default function StaffDialog({staff,onClose}:{staff:Staff;onClose:()=>voi
     <h3><MoonStar size={17}/> 關於我</h3>
     <p className="detail-bio">{staff.bio||'尚未填寫個人介紹。'}</p>
     {staff.services.length>0&&<><h3><Flower2 size={17}/> 服務專長</h3><div className="detail-tags">{staff.services.map(tag=><span key={tag}>{tag}</span>)}</div></>}
-    <h3>社群連結</h3>
-    {staff.socials.filter(x=>safeExternalUrl(x.url)).length>0?
-     <div className="detail-socials">{staff.socials.map(s=>{const href=safeExternalUrl(s.url);return href?<a key={s.id} href={href} target="_blank" rel="noopener noreferrer">{s.label}<ArrowUpRight size={17}/></a>:null})}</div>:
-     <p className="subdued">目前尚未提供公開社群連結。</p>}
-    <p className="dialog-signoff">此間非凡境，入內方知幽。</p>
+    {staff.socials.some(s=>safeExternalUrl(s.url))&&<>
+      <h3>社群連結</h3>
+      <div className="detail-socials">{staff.socials.map(s=>{const href=safeExternalUrl(s.url);return href?<a key={s.id} href={href} target="_blank" rel="noopener noreferrer">{s.label}<ArrowUpRight size={17}/></a>:null})}</div>
+     </>}
    </div>
   </section>
  </div>

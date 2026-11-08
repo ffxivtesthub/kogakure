@@ -1,42 +1,6 @@
 {
-  "generatedAt": "2026-11-08T05:37:13.961Z",
+  "generatedAt": "2026-11-08T06:47:44.770Z",
   "files": [
-    {
-      "name": "logo-wide.webp",
-      "source": "狐隱LOGO/狐隱金彩櫻花物語.png",
-      "originalBytes": 1706233,
-      "outputBytes": 1140438,
-      "width": 1672,
-      "height": 941,
-      "reductionPercent": 33
-    },
-    {
-      "name": "logo-wide-display.webp",
-      "source": "狐隱LOGO/狐隱金彩櫻花物語.png",
-      "originalBytes": 1706233,
-      "outputBytes": 608998,
-      "width": 1150,
-      "height": 647,
-      "reductionPercent": 64
-    },
-    {
-      "name": "logo-mark.webp",
-      "source": "狐隱LOGO/狐隱之湯：金月白狐徽章.png",
-      "originalBytes": 1917243,
-      "outputBytes": 1336222,
-      "width": 1254,
-      "height": 1254,
-      "reductionPercent": 30
-    },
-    {
-      "name": "logo-mark-small.webp",
-      "source": "狐隱LOGO/狐隱之湯：金月白狐徽章.png",
-      "originalBytes": 1917243,
-      "outputBytes": 23002,
-      "width": 140,
-      "height": 140,
-      "reductionPercent": 99
-    },
     {
       "name": "staff-01.webp",
       "source": "員工圖/FBK2.png",

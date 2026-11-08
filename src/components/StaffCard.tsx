@@ -24,12 +24,11 @@ export default function StaffCard({staff,onOpen,index}:Props){
      <span className="photo-shadow"/>
     </span>
     <span className="effect-particles" aria-hidden="true">{[0,1,2,3,4].map(i=><i key={i}/>)}</span>
-    <span className="card-kamon" aria-hidden="true">狐 隱</span>
     <span className="card-text">
      <span className="card-role">{staff.role||'狐隱接待者'}</span>
      <span className="card-name">{staff.name}</span>
      <span className="card-tagline">{staff.tagline||'願你在此得片刻安寧。'}</span>
-     <span className="card-cta">閱覽名帖 <ChevronRight size={16}/></span>
+     <span className="card-cta">查看名帖 <ChevronRight size={16}/></span>
     </span>
     <span className="card-shine" aria-hidden="true"/>
    </span>
