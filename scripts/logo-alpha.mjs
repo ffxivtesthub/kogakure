@@ -2,87 +2,171 @@ import sharp from 'sharp'
 import { join } from 'node:path'
 
 /**
- * Remove only the navy background connected to the outer edge.
- * Enclosed navy areas remain untouched (important for the round seal).
- * Never change the source image; emit transparent WebP variants (lossless by default).
+ * For circular badges, find the actual outer gold ring before removing the
+ * surrounding navy background. The artwork was not drawn at the canvas center:
+ * simply cropping a centered square leaves the dark disk off-center.
+ *
+ * Wide logos keep their original edge-connected background removal.
+ * Neither path changes the original source file.
  */
-export async function buildTransparentLogo(root, sourceRelative, variants) {
- const src=join(root,sourceRelative)
- const {data,info}=await sharp(src).ensureAlpha().raw().toBuffer({resolveWithObject:true})
- const {width,height,channels}=info
- const count=width*height
- const roundSeal=sourceRelative.includes('徽章')
- const mask=new Uint8Array(count)
- const queue=new Int32Array(count)
- let start=0,end=0
- const matches=(at)=>{
-  if(roundSeal){
-   const x=at%width,y=Math.floor(at/width)
-   const normalizedRadius=Math.hypot((x-(width-1)/2)/(width/2),(y-(height-1)/2)/(height/2))
-   if(normalizedRadius<.94)return false // keep the original navy inside the round seal
+function detectGoldRing(data, width, height, channels) {
+ const minSide = Math.min(width, height)
+ const angles = Array.from({ length: 120 }, (_, i) => {
+  const radians = i * Math.PI / 60
+  return [Math.cos(radians), Math.sin(radians)]
+ })
+ function goldAt(x, y) {
+  if (x < 0 || y < 0 || x >= width || y >= height) return false
+  const k = (y * width + x) * channels
+  const red = data[k], green = data[k + 1], blue = data[k + 2]
+  return red > 158 && green > 100 && green < red * .91 && blue < green * .85
+ }
+ function score(cx, cy, radius) {
+  let hits = 0
+  for (const [cos, sin] of angles) {
+   const x = Math.round(cx + radius * cos)
+   const y = Math.round(cy + radius * sin)
+   if (goldAt(x, y) || goldAt(x - 1, y) || goldAt(x + 1, y) ||
+       goldAt(x, y - 1) || goldAt(x, y + 1)) hits++
   }
-  const i=at*channels
-  const r=data[i],g=data[i+1],b=data[i+2]
-  // This art was supplied on a midnight-navy background.
-  // Pick low-luminance navy only, not the golden artwork.
-  return r<56 && g<52 && b<73 && b>=r-8
+  return hits / angles.length
+ }
+ let best = { cx: 0, cy: 0, radius: 0, score: 0 }
+ // Broad search, so slight shifts in the source image are still handled.
+ for (let cx = Math.round(width * .46); cx <= width * .54; cx += 4) {
+  for (let cy = Math.round(height * .42); cy <= height * .53; cy += 4) {
+   for (let radius = Math.round(minSide * .37); radius <= minSide * .44; radius += 3) {
+    const s = score(cx, cy, radius)
+    if (s > best.score) best = { cx, cy, radius, score: s }
+   }
+  }
+ }
+ const coarse = best
+ for (let cx = coarse.cx - 5; cx <= coarse.cx + 5; cx++) {
+  for (let cy = coarse.cy - 5; cy <= coarse.cy + 5; cy++) {
+   for (let radius = coarse.radius - 5; radius <= coarse.radius + 5; radius++) {
+    const s = score(cx, cy, radius)
+    if (s > best.score + .001) best = { cx, cy, radius, score: s }
+   }
+  }
+ }
+ if (best.score < .72) {
+  throw new Error('Cannot identify a concentric gold ring. Verify the circular Logo source.')
+ }
+ return best
+}
+
+function cropCircularBadge(data, width, height, channels) {
+ const ring = detectGoldRing(data, width, height, channels)
+ // The navy disk is centered on the actual ring, not the PNG canvas.
+ // Leave a restrained dark rim around the gold line.
+ const diskRadius = ring.radius + Math.max(28, Math.round(ring.radius * .065))
+ const halfSide = Math.ceil(diskRadius + 3)
+ const left = Math.round(ring.cx - halfSide)
+ const top = Math.round(ring.cy - halfSide)
+ const side = halfSide * 2
+ if (left < 0 || top < 0 || left + side > width || top + side > height) {
+  throw new Error('Gold ring is too close to a source image boundary for a circular crop')
+ }
+ let transparent = 0
+ for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) {
+   const d = Math.hypot(x - ring.cx, y - ring.cy)
+   // 2-pixel feather makes an antialiased circular edge, with no hard navy square.
+   const a = Math.min(1, Math.max(0, (diskRadius - d) / 2))
+   const i = (y * width + x) * channels + 3
+   data[i] = Math.round(data[i] * a)
+   if (data[i] === 0) transparent++
+  }
+ }
+ console.log(`Badge ring: center (${ring.cx},${ring.cy}), radius ${ring.radius}px; source canvas center (${width / 2},${height / 2}); score ${ring.score.toFixed(2)}`)
+ return { left, top, width: side, height: side, transparent }
+}
+
+function cropWideLogo(data, width, height, channels) {
+ const count = width * height
+ const visited = new Uint8Array(count)
+ const queue = new Int32Array(count)
+ let head = 0, tail = 0
+
+ function background(at) {
+  const i = at * channels
+  const red = data[i], green = data[i + 1], blue = data[i + 2]
+  return red < 56 && green < 52 && blue < 73 && blue >= red - 8
  }
  function enqueue(at) {
-  if(at<0||at>=count||mask[at])return
-  mask[at]=1
-  if(matches(at))queue[end++]=at
+  if (at < 0 || at >= count || visited[at]) return
+  visited[at] = 1
+  if (background(at)) queue[tail++] = at
  }
- for(let x=0;x<width;x++){enqueue(x);enqueue((height-1)*width+x)}
- for(let y=0;y<height;y++){enqueue(y*width);enqueue(y*width+width-1)}
- let removed=0
- while(start<end){
-  const at=queue[start++]
-  const x=at%width,y=Math.floor(at/width)
-  data[at*channels+3]=0
-  removed++
-  if(x>0)enqueue(at-1)
-  if(x<width-1)enqueue(at+1)
-  if(y>0)enqueue(at-width)
-  if(y<height-1)enqueue(at+width)
+ for (let x = 0; x < width; x++) {
+  enqueue(x)
+  enqueue((height - 1) * width + x)
  }
- // Prevent dark matte pixels at the shape boundary from producing a hard rim.
- // Keep the interior of the original art intact.
- for(let y=1;y<height-1;y++){
-  for(let x=1;x<width-1;x++){
-   const at=y*width+x
-   if(data[at*channels+3]===0)continue
-   let neighboring=0
-   for(const d of [-1,1,-width,width]){
-    if(data[(at+d)*channels+3]===0)neighboring++
-   }
-   if(neighboring>0){
-    const i=at*channels
-    const brightness=Math.max(data[i],data[i+1],data[i+2])
-    if(brightness<125)data[i+3]=Math.min(data[i+3],Math.max(80,Math.round((brightness/125)*255)))
-   }
+ for (let y = 0; y < height; y++) {
+  enqueue(y * width)
+  enqueue(y * width + width - 1)
+ }
+ let transparent = 0
+ while (head < tail) {
+  const at = queue[head++]
+  const x = at % width, y = Math.floor(at / width)
+  data[at * channels + 3] = 0
+  transparent++
+  if (x > 0) enqueue(at - 1)
+  if (x < width - 1) enqueue(at + 1)
+  if (y > 0) enqueue(at - width)
+  if (y < height - 1) enqueue(at + width)
+ }
+ // Soften dark pixels immediately adjacent to the transparency.
+ for (let y = 1; y < height - 1; y++) {
+  for (let x = 1; x < width - 1; x++) {
+   const at = y * width + x
+   const i = at * channels
+   if (data[i + 3] === 0) continue
+   const adjacent = [-1, 1, -width, width].some(d => data[(at + d) * channels + 3] === 0)
+   if (!adjacent) continue
+   const brightness = Math.max(data[i], data[i + 1], data[i + 2])
+   if (brightness < 125) data[i + 3] = Math.min(data[i + 3], Math.max(80, Math.round(brightness / 125 * 255)))
   }
  }
- let left=width,top=height,right=-1,bottom=-1
- for(let y=0;y<height;y++){
-  for(let x=0;x<width;x++){
-   const at=y*width+x
-   if(data[at*channels+3]===0)continue
-   if(x<left)left=x
-   if(x>right)right=x
-   if(y<top)top=y
-   if(y>bottom)bottom=y
+ let left = width, top = height, right = -1, bottom = -1
+ for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) {
+   if (data[(y * width + x) * channels + 3] === 0) continue
+   left = Math.min(left, x); right = Math.max(right, x)
+   top = Math.min(top, y); bottom = Math.max(bottom, y)
   }
  }
- if(right<left || bottom<top || removed<count*.1) {
-  throw new Error('Logo background mask check failed: '+sourceRelative+' removed '+removed+'/'+count)
+ if (right < left || bottom < top || transparent < count * .1) {
+  throw new Error('Wide Logo background mask check failed')
  }
- const margin=8
- left=Math.max(0,left-margin);top=Math.max(0,top-margin)
- right=Math.min(width-1,right+margin);bottom=Math.min(height-1,bottom+margin)
- for(const {path,maxWidth,quality} of variants) {
-  let pipe=sharp(data,{raw:{width,height,channels}}).extract({left,top,width:right-left+1,height:bottom-top+1})
-  if(maxWidth)pipe=pipe.resize({width:maxWidth,withoutEnlargement:true})
-  const meta=await pipe.webp(quality ? {quality,alphaQuality:100,effort:6,smartSubsample:true} : {lossless:true,effort:6}).toFile(join(root,'public','images',path))
-  console.log(path+': transparent '+meta.width+'x'+meta.height+' / '+(meta.size/1024).toFixed(0)+' KB / masked '+Math.round(removed/count*100)+'%')
+ const margin = 8
+ left = Math.max(0, left - margin)
+ top = Math.max(0, top - margin)
+ right = Math.min(width - 1, right + margin)
+ bottom = Math.min(height - 1, bottom + margin)
+ return { left, top, width: right - left + 1, height: bottom - top + 1, transparent }
+}
+
+export async function buildTransparentLogo(root, sourceRelative, variants) {
+ const source = join(root, sourceRelative)
+ const { data, info } = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+ const { width, height, channels } = info
+ const roundSeal = sourceRelative.includes('徽章')
+ const crop = roundSeal
+  ? cropCircularBadge(data, width, height, channels)
+  : cropWideLogo(data, width, height, channels)
+
+ for (const { path, maxWidth, quality } of variants) {
+  let pipeline = sharp(data, { raw: { width, height, channels } }).extract({
+   left: crop.left, top: crop.top, width: crop.width, height: crop.height,
+  })
+  if (maxWidth) pipeline = pipeline.resize({ width: maxWidth, withoutEnlargement: true })
+  const output = await pipeline.webp(
+   quality ? { quality, alphaQuality: 100, effort: 6, smartSubsample: true }
+           : { lossless: true, effort: 6 }
+  ).toFile(join(root, 'public', 'images', path))
+  console.log(`${path}: transparent ${output.width}x${output.height} / ${(output.size / 1024).toFixed(0)} KB / masked ${Math.round(crop.transparent / (width * height) * 100)}%`)
  }
 }

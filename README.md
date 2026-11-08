@@ -69,7 +69,7 @@ insert into public.admin_users(user_id) values ('YOUR_AUTH_USER_UUID');
 ## 速度、圖片品質與設計標準
 
 - 首頁／人物卡使用 WebP，提供縮圖，較大的照片只在展開詳情時下載。
-- Logo 透過 `scripts/logo-alpha.mjs` 去除外圍深色背景，保留圓章內部深色設計，裁切透明留白後以無損 WebP 輸出；員工照以高品質 WebP 輸出 2 種尺寸。來源 PNG 永不覆寫。
+- Logo 透過 `scripts/logo-alpha.mjs` 去除外圍深色背景；圓章會自動偵測金色圓框的真正中心，以其為中心繪製同心深色圓底和正方形透明畫布，避免原圖中心偏移造成內外圈不同心。大圖及頁首縮圖採無損 WebP，開場徽章採高品質 WebP。員工照輸出 2 種尺寸；來源 PNG 永不覆寫。
 - 後台圖片上傳由瀏覽器產生高品質 WebP 與 760px 列表縮圖，存於 Supabase Storage。
 - **高品質有損 WebP 並非逐像素無損**；以實際肉眼觀感優先，如需數學上的無損需另改用 lossless 來源。
 - 桌面基本字體 >= 18px CSS，手機基本字體 17px；高解析度寬視窗再放大。避免深色背景使用灰到看不清的文案。
