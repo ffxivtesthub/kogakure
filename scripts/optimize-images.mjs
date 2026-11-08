@@ -20,7 +20,7 @@ await buildTransparentLogo(root,'狐隱LOGO/狐隱金彩櫻花物語.png',[
  {path:'logo-wide.webp'}, {path:'logo-wide-display.webp',maxWidth:1150}
 ])
 await buildTransparentLogo(root,'狐隱LOGO/狐隱之湯：金月白狐徽章.png',[
- {path:'logo-mark.webp'}, {path:'logo-mark-small.webp',maxWidth:140}
+ {path:'logo-mark.webp'}, {path:'logo-mark-small.webp',maxWidth:140}, {path:'logo-intro.webp',maxWidth:320,quality:92}
 ])
 await exportImage('員工圖/FBK2.png','staff-01.webp',{width:1900,quality:94})
 await exportImage('員工圖/FBK2.png','staff-01-small.webp',{width:800,quality:90})

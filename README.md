@@ -73,7 +73,7 @@ insert into public.admin_users(user_id) values ('YOUR_AUTH_USER_UUID');
 - 後台圖片上傳由瀏覽器產生高品質 WebP 與 760px 列表縮圖，存於 Supabase Storage。
 - **高品質有損 WebP 並非逐像素無損**；以實際肉眼觀感優先，如需數學上的無損需另改用 lossless 來源。
 - 桌面基本字體 >= 18px CSS，手機基本字體 17px；高解析度寬視窗再放大。避免深色背景使用灰到看不清的文案。
-- 非必要動畫只在滑鼠 hover 啟動；支援 prefers-reduced-motion。
+- 非必要動態以 CSS 為主，支援 prefers-reduced-motion；訪客入場動畫僅每個瀏覽分頁工作階段首次播放一次。
 - 員工個人特效由後台 effect 欄位選擇，不需要為每個人寫新 CSS。
 - 社群連結會驗證 http(s) URL，開啟新頁使用 noopener noreferrer。
 - 服務、排班、餐點與預約的資料模型會在對應頁面開發時建立並加入權限政策，不會先上線空殼可送出的表單。
@@ -97,3 +97,13 @@ insert into public.admin_users(user_id) values ('YOUR_AUTH_USER_UUID');
 - 公開頁尾不顯示管理入口；管理者仍可直接使用 `/#/admin` 登入，資料保護以 Supabase RLS 為準。
 - `.gitignore` 已忽略 `*.tsbuildinfo`。如果歷史提交曾追蹤 `tsconfig.tsbuildinfo`，在 Git Bash 執行一次 `git rm --cached tsconfig.tsbuildinfo` 取消追蹤（不刪本機檔案）。
 - 店長接手及測試帳號轉正式帳號的步驟見 `docs/HANDOFF.md`。
+
+## 入場動畫（桌面與手機共用）
+
+- 開場改為極簡和風旅宿視覺：深夜背景、金狐徽章、纖細金線及一句品牌標語。Logo 與標語先完整淡出，背景再淡出，避免主頁出現時開場裝飾仍在上層。
+- 首次進站約 **2 秒**；沒有略過按鈕，也沒有影片或持續飄動的粒子，所有開場內容在揭露主頁前都已消失。
+- 使用 `sessionStorage` 記錄已看過動畫，同分頁刷新或頁面切換不會重播；新分頁第一次造訪才播放。管理後台 `/#/admin` 永遠跳過。
+- 若作業系統設定 **減少動態效果**，直接略過入場動畫。
+- 預覽/測試用網址：`http://localhost:5173/?intro=1#/staff`；GitHub Pages 上為 `https://帳號.github.io/kogakure/?intro=1#/staff`，可強制重播以便驗收。
+- 入場 Logo 為 `public/images/logo-intro.webp`（320px 高品質透明 WebP，約 32 KB）；原始 Logo 不變，執行 `npm run assets:build` 即可重新產生。
+- 動畫元件與樣式位於 `src/components/EntryIntro.tsx` 和 `src/components/entry-intro.css`；不依賴影片、Canvas 或額外動畫框架。

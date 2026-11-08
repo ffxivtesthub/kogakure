@@ -4,7 +4,7 @@ import { join } from 'node:path'
 /**
  * Remove only the navy background connected to the outer edge.
  * Enclosed navy areas remain untouched (important for the round seal).
- * Never change the source image; emit transparent lossless WebP variants.
+ * Never change the source image; emit transparent WebP variants (lossless by default).
  */
 export async function buildTransparentLogo(root, sourceRelative, variants) {
  const src=join(root,sourceRelative)
@@ -79,10 +79,10 @@ export async function buildTransparentLogo(root, sourceRelative, variants) {
  const margin=8
  left=Math.max(0,left-margin);top=Math.max(0,top-margin)
  right=Math.min(width-1,right+margin);bottom=Math.min(height-1,bottom+margin)
- for(const {path,maxWidth} of variants) {
+ for(const {path,maxWidth,quality} of variants) {
   let pipe=sharp(data,{raw:{width,height,channels}}).extract({left,top,width:right-left+1,height:bottom-top+1})
   if(maxWidth)pipe=pipe.resize({width:maxWidth,withoutEnlargement:true})
-  const meta=await pipe.webp({lossless:true,effort:6}).toFile(join(root,'public','images',path))
+  const meta=await pipe.webp(quality ? {quality,alphaQuality:100,effort:6,smartSubsample:true} : {lossless:true,effort:6}).toFile(join(root,'public','images',path))
   console.log(path+': transparent '+meta.width+'x'+meta.height+' / '+(meta.size/1024).toFixed(0)+' KB / masked '+Math.round(removed/count*100)+'%')
  }
 }
