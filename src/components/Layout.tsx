@@ -1,23 +1,69 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { Menu, X, AtSign, ArrowUpRight } from 'lucide-react'
+import { Home, UsersRound, CalendarDays, UtensilsCrossed, Grid2X2, X, AtSign, ArrowUpRight, Compass, Sparkles, CalendarCheck2 } from 'lucide-react'
 import { asset } from '../lib/paths'
-const links=[['/','首頁'],['/about','館內介紹'],['/services','服務內容'],['/staff','人員介紹'],['/shifts','值班排班'],['/menu','點菜'],['/booking','預約']]
+
+const links = [
+ {to:'/',label:'首頁'},
+ {to:'/about',label:'館內介紹'},
+ {to:'/services',label:'服務內容'},
+ {to:'/staff',label:'人員介紹'},
+ {to:'/shifts',label:'值班排班'},
+ {to:'/menu',label:'點菜'},
+ {to:'/booking',label:'預約'},
+]
+
+const mobileMain = [
+ {to:'/',label:'首頁',icon:Home},
+ {to:'/staff',label:'人員',icon:UsersRound},
+ {to:'/shifts',label:'值班',icon:CalendarDays},
+ {to:'/menu',label:'點菜',icon:UtensilsCrossed},
+]
+
+const mobileExtra = [
+ {to:'/about',label:'館內介紹',icon:Compass},
+ {to:'/services',label:'服務內容',icon:Sparkles},
+ {to:'/booking',label:'預約',icon:CalendarCheck2},
+]
+
 export default function Layout({children}:{children:React.ReactNode}){
- const [menuOpen,setMenuOpen]=useState(false)
- const loc=useLocation()
+ const [moreOpen,setMoreOpen]=useState(false)
+ const location=useLocation()
+ const firstExtra=useRef<HTMLAnchorElement>(null)
+ const moreButton=useRef<HTMLButtonElement>(null)
+ const openedByKeyboard=useRef(false)
+ const extraActive=mobileExtra.some(link=>location.pathname===link.to)
+
+ useEffect(()=>{setMoreOpen(false)},[location.pathname])
+
+ useEffect(()=>{
+  if(!moreOpen)return
+  const previous=document.body.style.overflow
+  document.body.style.overflow='hidden'
+  if(openedByKeyboard.current)firstExtra.current?.focus()
+  function handleEscape(event:KeyboardEvent){
+   if(event.key==='Escape'){
+    setMoreOpen(false)
+    moreButton.current?.focus()
+   }
+  }
+  document.addEventListener('keydown',handleEscape)
+  return()=>{
+   document.removeEventListener('keydown',handleEscape)
+   document.body.style.overflow=previous
+  }
+ },[moreOpen])
+
  return <div className="site">
   <header className="site-header">
    <div className="header-inner">
-    <Link to="/" className="brand" onClick={()=>setMenuOpen(false)} aria-label="狐隱首頁">
+    <Link to="/" className="brand" onClick={()=>setMoreOpen(false)} aria-label="狐隱首頁">
      <img src={asset('images/logo-mark-small.webp')} alt="" width="44" height="44"/>
      <span><strong>狐隱</strong><small>KOGAKURE</small></span>
     </Link>
-    <nav className="desktop-nav" aria-label="主要導覽">{links.map(([to,label])=><NavLink key={to} to={to} end={to==='/'} className={({isActive})=>isActive?'active':''}>{label}</NavLink>)}</nav>
+    <nav className="desktop-nav" aria-label="主要導覽">{links.map(({to,label})=><NavLink key={to} to={to} end={to==='/'} className={({isActive})=>isActive?'active':''}>{label}</NavLink>)}</nav>
     <a className="social-header" target="_blank" rel="noopener noreferrer" href="https://www.threads.com/@kogakure_ffxiv" aria-label="狐隱 Threads"><AtSign size={19}/></a>
-    <button className="mobile-menu-button" type="button" onClick={()=>setMenuOpen(v=>!v)} aria-label={menuOpen?'關閉導覽':'開啟導覽'} aria-expanded={menuOpen}>{menuOpen?<X/>:<Menu/>}</button>
    </div>
-   {menuOpen&&<nav className="mobile-nav" aria-label="手機導覽">{links.map(([to,label],index)=><NavLink key={to} to={to} onClick={()=>setMenuOpen(false)} className={loc.pathname===to?'active':''}><span>{String(index+1).padStart(2,'0')}</span>{label}</NavLink>)}</nav>}
   </header>
   <main>{children}</main>
   <footer className="site-footer">
@@ -27,5 +73,20 @@ export default function Layout({children}:{children:React.ReactNode}){
    </div>
    <div className="copyright">本網站為 Final Fantasy XIV 玩家 RP 店鋪非官方網站。</div>
   </footer>
+
+  {moreOpen&&<>
+   <div className="mobile-more-backdrop" onClick={()=>setMoreOpen(false)} aria-hidden="true"/>
+   <nav id="mobile-more-menu" className="mobile-more-panel" aria-label="其他頁面">
+    <div className="mobile-more-heading"><strong>更多頁面</strong><button type="button" aria-label="關閉更多選單" onClick={()=>{setMoreOpen(false);moreButton.current?.focus()}}><X size={21}/></button></div>
+    {mobileExtra.map(({to,label,icon:Icon},index)=><NavLink key={to} to={to} ref={index===0?firstExtra:undefined} className={({isActive})=>'mobile-extra-link'+(isActive?' active':'')} onClick={()=>setMoreOpen(false)}><Icon size={21} strokeWidth={1.8}/><span>{label}</span><ArrowUpRight size={16}/></NavLink>)}
+    <a className="mobile-extra-link mobile-social-link" href="https://www.threads.com/@kogakure_ffxiv" target="_blank" rel="noopener noreferrer" onClick={()=>setMoreOpen(false)}><AtSign size={21} strokeWidth={1.8}/><span>官方 Threads</span><ArrowUpRight size={16}/></a>
+   </nav>
+  </>}
+  <nav className="mobile-bottom-nav" aria-label="手機主要導覽">
+   {mobileMain.map(({to,label,icon:Icon})=><NavLink key={to} to={to} end={to==='/'} className={({isActive})=>'mobile-bottom-item'+(isActive?' active':'')} onClick={()=>setMoreOpen(false)}><Icon size={22} strokeWidth={1.8}/><span>{label}</span></NavLink>)}
+   <button ref={moreButton} type="button" className={'mobile-bottom-item'+(extraActive?' active':moreOpen?' expanded':'')} aria-expanded={moreOpen} aria-controls="mobile-more-menu" onClick={event=>{openedByKeyboard.current=event.detail===0;setMoreOpen(value=>!value)}}>
+    <Grid2X2 size={22} strokeWidth={1.8}/><span>更多</span>
+   </button>
+  </nav>
  </div>
 }

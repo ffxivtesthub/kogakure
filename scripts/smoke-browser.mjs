@@ -49,13 +49,17 @@ try {
  await run('Runtime.enable')
  await run('Page.enable')
  if(process.argv.includes('--mobile')) {
-  await run('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true})
+  await run('Emulation.setDeviceMetricsOverride',{width:process.argv.includes('--small')?320:390,height:844,deviceScaleFactor:1,mobile:true})
  } else {
   await run('Emulation.setDeviceMetricsOverride',{width:1440,height:980,deviceScaleFactor:1,mobile:false})
  }
  await delay(4500)
+ if(process.argv.includes('--more')){
+  await run('Runtime.evaluate',{expression:'document.querySelector(".mobile-bottom-nav button")?.click()'})
+  await delay(400)
+ }
  const result=await run('Runtime.evaluate',{
-  expression:'JSON.stringify({path:location.href,ready:document.readyState,images:Array.from(document.images).map(i=>({src:i.currentSrc,loaded:i.complete && i.naturalWidth>0,width:i.naturalWidth,loading:i.loading})),title:document.querySelector("h1")?.textContent,staffCards:document.querySelectorAll(".omamori-card").length})',
+  expression:'JSON.stringify({path:location.href,ready:document.readyState,images:Array.from(document.images).map(i=>({src:i.currentSrc,loaded:i.complete && i.naturalWidth>0,width:i.naturalWidth,loading:i.loading})),title:document.querySelector("h1")?.textContent,staffCards:document.querySelectorAll(".omamori-card").length,bottomNav:(()=>{const n=document.querySelector(".mobile-bottom-nav");return n?{display:getComputedStyle(n).display,labels:Array.from(n.querySelectorAll("span")).map(x=>x.textContent),bottom:n.getBoundingClientRect().bottom,viewport:innerHeight}:null})(),moreOpen:!!document.querySelector(".mobile-more-panel"),moreLinks:Array.from(document.querySelectorAll(".mobile-more-panel a")).map(x=>x.textContent)})',
   returnByValue:true,
  })
  const payload=JSON.parse(result.result.value)
